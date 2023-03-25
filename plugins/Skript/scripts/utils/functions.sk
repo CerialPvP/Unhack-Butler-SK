@@ -1,0 +1,15 @@
+#! Functions File
+#! Made by Cerial
+
+# Remove everything before index
+# As the name suggests.
+function removeBeforeIndex(s: string, i: integer) :: string:
+    set {_ss::*} to split {_s} at ""
+    set {_s} to 0
+    loop {_ss::*}:
+        add 1 to {_s}
+        {_s} >= {_i}
+
+        add "%loop-value%" to {_rt::*}
+    
+    return "%join {_rt::*} with ""%"

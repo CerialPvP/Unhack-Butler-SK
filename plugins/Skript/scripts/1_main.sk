@@ -1,0 +1,39 @@
+#! Main bot file
+#! Made by Cerial
+
+# Bot loading
+# Replace "BOT_NAME" with the name of your Discord bot.
+define new bot named "Unhack":
+    # A token is a way for Discord bots to log in.
+    # You can get your token by going to the Discord Developers page.
+    token: "%yml value "token" from file "plugins/Skript/scripts/secret.yml"%"
+    #! Do not change these settings if you don't know what you're doing.
+    intents: default intents
+    policy: all
+    auto reconnect: true
+    compression: none
+    #! You can now touch below.
+    on ready:
+        # This section will be triggered when the bot is online.
+        send "&b[Unhack Butler] The bot is ready." to console
+        set presence of bot named "Unhack" to watching "discord.gg/unhack"
+        updateSlash()
+    on guild ready:
+        # This section will be triggered when a certain guild is loaded.
+        send "&b[Unhack Butler] The guild %event-guild% is now loaded." to console
+
+on load:
+    set presence of bot named "Unhack" to watching "discord.gg/unhack"
+
+# Slash command registration mechanism
+# Register function
+function addSlash(slash: object, name: string):
+    #! DO NOT TOUCH
+    delete {-slashcmd.Global::%{_name}%}
+    set {-slashcmd.Global::%{_name}%} to {_slash}
+    stop
+
+function updateSlash():
+    update command {-slashcmd.Global::*} globally in bot named "Unhack"
+    broadcast "&b[Unhack Butler] Updated all slash commands."
+    stop

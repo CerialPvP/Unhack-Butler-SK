@@ -1,0 +1,109 @@
+#! Admin command
+#! Made by Cerial
+
+on load:
+    set {_c} to new slash command named "admin" with description "Administrative commands for bot owner."
+
+    set {_admin::reload} to new sub command named "reload" with description "Reload a script."
+    add new required string option named "script" with description "The script you want to reload." to options of {_admin::reload}
+
+    set {_admin::effcommand} to new sub command named "effcommand" with description "Run an effect command."
+    add new required string option named "cmd" with description "The effect command you want to run." to options of {_admin::effcommand}
+
+    add {_admin::*} to sub commands of {_c}
+
+    addSlash({_c}, "admin")
+
+on slash command:
+    event-string contains "admin"
+
+    if discord id of event-member != "702044939520835587" or "410781931727486976":
+        make embed:
+            set title of the embed to "No Permission!"
+            set description of the embed to "You may not perform this command."
+            set embed color of the embed to red
+        reply with last embed
+        stop
+
+    if event-string = "admin reload":
+        # Get the option
+        defer the interaction and wait
+        set {_sk} to argument "script" as string
+        replace all ".sk" in {_sk} with ""
+
+        # Do the command
+        console command "sk reload %{_sk}%"
+        wait 0.5 seconds
+
+        # Take the latest.log file, reverse the content order, and show the results to the user.
+        set {_c::*} to reversed (file contents of "logs/latest.log")
+        #broadcast "%size of {_c::*}% | %reversed {_c::*}%"
+        loop {_c::*}:    
+            add loop-value to {_output::*}
+            #broadcast "%loop-value%"
+            if loop-value contains "[Skript] Can't find the script '%{_sk}%' in the scripts folder!":
+                set {_err} to true
+                stop loop
+
+            else if loop-value contains "[Skript] Reloading":
+                stop loop
+            
+            else if loop-value contains "[Skript] Encountered" and "error":
+                set {_err} to true
+            
+            else:
+                continue
+        
+        set {_output::*} to reversed {_output::*}
+
+        if length of "%{_output::*}%" > 3600:
+            set {_l} to length of "%{_output::*}%"
+            set {_output::*} to "Too long to display! (%{_l}%/3600)"
+
+        make embed:
+            set title of the embed to "Admin - Skript Reload"
+            set embed color of the embed to red if {_err} = true
+            set embed color of the embed to lime if {_err} is not set
+            set embed color of the embed to yellow if {_l} is set
+            set description of the embed to ":inbox_tray: **Input:** ```%nl%%{_sk}%.sk``` %nl%:outbox_tray: **Output:** ```%nl%%(join {_output::*} with nl)%```"
+        set {_embed} to (last embed).build()
+        event.getJDAEvent().getHook().editOriginalEmbeds({_embed}).queue()
+        stop
+    
+    else if event-string = "admin effcommand":
+        defer the interaction and wait
+        set {_cm} to argument "cmd" as string
+
+        console command "$%{_cm}%"
+        wait 0.5 seconds
+
+        set {_c::*} to reversed (file contents of "logs/latest.log")
+        loop {_c::*}:    
+            add loop-value to {_output::*}
+            #broadcast "%loop-value%"
+
+            if loop-value contains "executing '%{_cm}%'":
+                stop loop
+            
+            else if loop-value contains "Error in: %{_cm}%":
+                set {_err} to true
+                stop loop
+            
+            else:
+                continue
+        
+        set {_output::*} to reversed {_output::*}
+
+        if length of "%{_output::*}%" > 3600:
+            set {_l} to length of "%{_output::*}%"
+            set {_output::*} to "Too long to display! (%{_l}%/3600)"
+
+        make embed:
+            set title of the embed to "Admin - Effect Command"
+            set embed color of the embed to red if {_err} = true
+            set embed color of the embed to lime if {_err} is not set
+            set embed color of the embed to yellow if {_l} is set
+            set description of the embed to ":inbox_tray: **Input:** ```applescript%nl%%{_cm}%``` %nl%:outbox_tray: **Output:** ```%nl%%(join {_output::*} with nl)%```"
+        set {_embed} to (last embed).build()
+        event.getJDAEvent().getHook().editOriginalEmbeds({_embed}).queue()
+        stop

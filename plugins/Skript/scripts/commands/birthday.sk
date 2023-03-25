@@ -1,0 +1,194 @@
+#! Birthdays
+#! Made by Cerial
+
+on load:
+    set {_c} to new slash command named "birthdays" with description "Manage staff member's birthdays."
+
+    # /birthdays add <date>
+    set {_bdays::add} to new sub command named "add" with description "Add your own birthday."
+    add new required string option named "date" with description "Your birthday date. Valid format: dd/mm/yyyy" to options of {_bdays::add}
+
+    # /birthdays remove
+    set {_bdays::remove} to new sub command named "remove" with description "Remove your birthday."
+
+    # /birthdays info
+    set {_bdays::info} to new sub command named "info" with description "View your stored birthday information."
+    add new user option named "user" with description "(Optional) Enter someone's name to check their birthday." to options of {_bdays::info}
+
+    # /birthdays list
+    set {_bdays::list} to new sub command named "list" with description "List all the stored birthdays on the system."
+
+    add {_bdays::*} to sub commands of {_c}
+    addSlash({_c}, "birthdays")
+
+function invdateform() :: embedbuilder:
+    make embed:
+        set title of the embed to "Invalid date format!"
+        set description of the embed to "You did not enter your birthday correctly.%nl%Birthdays are formatted like this: `dd/mm/yyyy` (slashes can be also dots if you wish)."
+        set embed color of the embed to red
+    return last embed
+
+on slash command:
+    event-string contains "birthdays"
+    if roles of event-member doesn't contain (role with id "1049320383779704863"):
+        make embed:
+            set title of the embed to "No Permission!"
+            set description of the embed to "Only staff members may use this command."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+
+    if event-string = "birthdays add":
+        set {_d} to argument "date" as string
+
+        # Check if date does not contain slashes or dots
+        if {_d} doesn't contain "/" or ".":
+            reply with hidden invdateform()
+            stop
+
+        # Split the birthday
+        set {_sd::*} to split {_d} at "/" if {_d} contains "/"
+        set {_sd::*} to split {_d} at "." if {_d} contains "."
+        #set {_sd::*} to {_sd::*} parsed as integer
+
+        loop {_sd::*}:
+            set {_sd::%loop-index%} to loop-value parsed as integer
+
+        # Check if there are not 3 entries
+        if size of {_sd::*} != 3:
+            reply with hidden invdateform()
+            stop
+        
+        # Day checks
+        if length of "%{_sd::1}%" < 1:
+            reply with hidden invdateform()
+            stop
+        
+        if length of "%{_sd::1}%" > 2:
+            reply with hidden invdateform()
+            stop
+
+        if {_sd::1} < 1:
+            reply with hidden invdateform()
+            stop
+        
+        if {_sd::1} > 31:
+            reply with hidden invdateform()
+            stop
+
+        # Month checks
+        if length of "%{_sd::2}%" < 1:
+            reply with hidden invdateform()
+            stop
+        
+        if length of "%{_sd::2}%" > 2:
+            reply with hidden invdateform()
+            stop
+
+        if {_sd::2} < 1:
+            reply with hidden invdateform()
+            stop
+        
+        if {_sd::2} > 12:
+            reply with hidden invdateform()
+            stop
+
+        # Year checks
+        if length of "%{_sd::3}%" != 4:
+            reply with hidden invdateform()
+            stop
+
+        
+        # Finally, perform the code.
+        set {bday::%discord id of event-member%::setAt} to now
+        set {bday::%discord id of event-member%::date} to "%{_sd::1}%;%{_sd::2}%;%{_sd::3}%"
+
+        # Send embed and finish.
+        make embed:
+            set title of the embed to "Birthday set!"
+            set description of the embed to "Your birthday is now set to the following: `%{bday::%discord id of event-member%::date}%`.%nl%We will notify staff once your birthday comes."
+            set embed color of the embed to lime
+        reply with last embed
+        stop
+    
+    else if event-string = "birthdays info":
+        set {_m} to argument "user" as user ? event-member
+        set {_sel} to "You do" if {_m} = event-member, else "<@%discord id of {_m}%> does"
+
+        if {bday::%discord id of {_m}%::*} is not set:
+            make embed:
+                set title of the embed to "No birthday set!"
+                set description of the embed to "%{_sel}% not have a birthday set in the system!%nl%To set it, run </birthdays add:1088825704893923408>."
+                set embed color of the embed to red
+            reply with hidden last embed
+            stop
+        
+        set {_f} to join (split {bday::%discord id of event-member%::date} at ";") with "/"
+        make embed:
+            set title of the embed to "Birthdays - Information"
+            set description of the embed to "`-` **Birthday set at:** <t:%floor(unix timestamp of {bday::%discord id of event-member%::setAt})%:F> (<t:%floor(unix timestamp of {bday::%discord id of event-member%::setAt})%:R>)%nl%`-` **Birthday at:** %{_f}%"
+            set embed color of the embed to yellow
+        reply with last embed
+        stop
+    
+    else if event-string = "birthdays remove":
+        if {bday::%discord id of event-member%::*} is not set:
+            make embed:
+                set title of the embed to "No birthday set!"
+                set description of the embed to "You do not have a birthday set in the system!%nl%To set it, run </birthdays add:1088825704893923408>."
+                set embed color of the embed to red
+            reply with hidden last embed
+            stop
+        
+        delete {bday::%discord id of event-member%::*}
+        make embed:
+            set title of the embed to "Birthdays - Birthday data deleted."
+            set description of the embed to "Your birthday data has been deleted from the system.%nl%To set it again, use </birthdays add:1088825704893923408>."
+            set embed color of the embed to lime
+        reply with last embed
+        stop
+
+    else if event-string = "birthdays list":
+        set {_i} to 0
+        load members of guild with id "1049319800209408090" and store them in {_mem::*}
+        loop {_mem::*}:
+            {bday::%discord id of loop-value%::*} is set
+            add 1 to {_i}
+            set {_sf::*} to split {bday::%discord id of loop-value%::date} at ";"
+            set {_f} to join ({_sf::*}) with "/" 
+            add "**%{_i}%)** <@%discord id of loop-value%>: %{_f}%" to {_dis::*}
+        
+        add "**No birthdays to display at the moment.**" to {_dis::*} if {_dis::*} is not set
+
+        make embed:
+            set title of the embed to "Birthdays - List"
+            set description of the embed to "%join {_dis::*} with nl%"
+            set embed color of the embed to yellow
+        reply with last embed
+        stop
+
+import:
+    java.time.Year
+
+every second:
+    load members of guild with id "1049319800209408090" and store them in {_mem::*}
+    loop {_mem::*}:
+        {bday::%discord id of loop-value%::*} is set
+
+        set {_sf::*} to split {bday::%discord id of loop-value%::date} at ";"
+        set {_f} to join ({_sf::*}) with "/"
+        set {_yr} to removeBeforeIndex(Year.now().toString(), 3)
+        set {_t} to ("%{_sf::2}%/%{_sf::1}%/%{_yr}%, 0:00 AM" parsed as date)
+        #set {_t} to now
+
+        if "%now%" = "%{_t}%":
+            create a message and store it in {_msg}:
+                set the content of the message to "%mention tag of role with id "1049320383779704863"%"
+                make embed:
+                    set title of the embed to "Congratulations!"
+                    set description of the embed to "Today it's %mention tag of loop-value%'s birthday!%nl%Today they are **%Year.now().getValue()-{_sf::3} parsed as integer%** years old.%nl%Wish them a happy birthday!"
+                    set embed color of the embed to lime
+                add last embed to embeds of the message
+            
+            post {_msg} to channel with id "1077630295844597822"
+            stop loop

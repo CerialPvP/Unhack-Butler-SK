@@ -1,0 +1,26 @@
+#! Applications
+#! Made by Cerial
+
+# Register function cuz we need to access it
+function applications_registerCommands(rl: boolean):
+    set {_c} to new slash command named "apply" with description "Apply for staff on the Unhack network."
+
+    # /apply admin
+    set {_apply::admin} to new sub command named "admin" with description "Manage the applications."
+
+    # /apply new <name (autocompleteable)>
+    set {_apply::new} to new sub command named "new" with description "Make a new application."
+    set {_applyopt::new::appname} to new required string option named "appname" with description "The name of your application."
+    # Loop through all applications
+    
+
+    add {_applyopt::new::appname} to options of {_apply::new}
+
+    add {_apply::*} to sub commands of {_c}
+
+    addSlash({_c}, "apply")
+    if {_rl} = true:
+        updateSlash()
+
+on load:
+    applications_registerCommands(false)
