@@ -17,6 +17,7 @@ define new bot named "Unhack":
         # This section will be triggered when the bot is online.
         send "&b[Unhack Butler] The bot is ready." to console
         set presence of bot named "Unhack" to watching "discord.gg/unhack"
+        wait 5 seconds
         updateSlash()
     on guild ready:
         # This section will be triggered when a certain guild is loaded.
@@ -37,3 +38,20 @@ function updateSlash():
     update command {-slashcmd.Global::*} globally in bot named "Unhack"
     broadcast "&b[Unhack Butler] Updated all slash commands."
     stop
+
+on skript unload:
+    delete {-uptime::*}
+
+every second:
+    add 1 to {-uptime::s}
+    if {-uptime::s} = 60:
+        remove 60 from {-uptime::s}
+        add 1 to {-uptime::m}
+    
+    if {-uptime::m} = 60:
+        remove 60 from {-uptime::m}
+        add 1 to {-uptime::h}
+    
+    if {-uptime::h} = 24:
+        remove 24 from {-uptime::h}
+        add 1 to {-uptime::d}

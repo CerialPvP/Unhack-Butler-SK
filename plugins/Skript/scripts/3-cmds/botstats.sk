@@ -1,0 +1,41 @@
+#! Bot Stats
+#! Made by Cerial for Unhack Butler
+
+on load:
+    set {_c} to new slash command named "botstats" with description "View the bot's stats."
+
+    addSlash({_c}, "botstats")
+
+import:
+    java.lang.System
+
+on slash command:
+    event-string = "botstats"
+
+    if {-botstats::%discord id of event-member%::*} is set:
+        make embed:
+            set title of the embed to "Bot Stats - Message ping test executing!"
+            set description of the embed to "I am currently executing a message ping test.%nl%Wait until it finishes."
+            set embed color of the embed to embedColor("red")
+        reply with hidden last embed
+        stop
+
+    set {-botstats::%discord id of event-member%::mps} to System.currentTimeMillis()
+
+    make embed:
+        set description of the embed to "Testing message ping..."
+        set embed color of the embed to embedColor("yellow")
+    reply with last embed and store it in {-botstats::%discord id of event-member%::embed}
+
+    set {-botstats::%discord id of event-member%::mpe} to System.currentTimeMillis()
+    load members of event-guild and store them in {_m::*}
+
+    make embed:
+        set title of the embed to "Bot Stats"
+        set embed color of the embed to embedColor("lime")
+        add inline field named ":clock: Uptime" with value "%{-uptime::d} ? 0% days, %{-uptime::h} ? 0% hours, %{-uptime::m} ? 0% minutes and %{-uptime::s} ? 0% seconds." to embed
+        add inline field named "<:unhack_ping:1100478801315647520> Ping" with value "**Message Ping:** %{-botstats::%discord id of event-member%::mpe}-{-botstats::%discord id of event-member%::mps}%ms%nl%**Websocket Ping:** %bot ping of event-bot%ms" to embed
+        add inline field named ":family: Members" with value "%size of {_m::*}% members" to embed
+    edit {-botstats::%discord id of event-member%::embed} with last embed
+    delete {-botstats::%discord id of event-member%::*}
+    stop

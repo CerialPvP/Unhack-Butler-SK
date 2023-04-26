@@ -1,0 +1,147 @@
+#! Info skript
+#! Made by Cerial for Unhack Butler
+
+function info_registerCommands(upd: boolean):
+    set {_c} to new slash command named "info" with description "Receive information about specific topics."
+
+    # /info lookup
+    set {_info::general} to new sub command named "lookup" with description "Receive information about specific topics."
+    set {_info::generalopt::topic} to new required string option named "topic" with description "The topic you want to receive help with."
+    loop {infotopics::*}:
+        # title;body
+        set {_s::*} to split "%loop-value%" at ";"
+        add new choice named "%{_s::1}%" with value "%{_s::1}%" to choices of {_info::generalopt::topic}
+    add {_info::generalopt::topic} to options of {_info::general}
+    add new user option named "mention" with description "(Optional) If you want to mention a user, then you can do it here." to options of {_info::general}
+
+    # /info admin
+    set {_info::admin} to new sub command named "admin" with description "(Admin) Add, remove or edit information."
+    
+    # Do command shits
+    add {_info::general} and {_info::admin} to sub commands of {_c}
+
+    addSlash({_c}, "info")
+    if {_upd} = true:
+        updateSlash()
+
+on load:
+    info_registerCommands(false)
+
+on slash command:
+    event-string contains "info"
+
+    # /info lookup
+    if event-string = "info lookup":
+        set {_topic} to argument "topic" as string
+        set {_user} to argument "mention" as user
+    
+        loop {infotopics::*}:
+            set {_s::*} to split "%loop-value%" at ";"
+            if {_s::1} = {_topic}:
+                set {_rt} to true
+                stop loop
+
+        if {_rt} is not set:
+            make embed:
+                set title of the embed to "Info - Topic not found."
+                set description of the embed to "The topic you're searching for, `%{_topic}%`, does not exist.%nl%Make sure to use the auto-complete for available topics!"
+                set embed color of the embed to embedColor("red")
+            reply with hidden last embed
+            stop
+
+        create a new message and store it in {_m}:
+            set content of message to "%mention tag of {_user}%" if {_user} is set
+
+            make embed:
+                set title of the embed to "Info - %{_s::1}%"
+                set description of the embed to "%{_s::2}%"
+                set embed color of the embed to embedColor("blue")
+            add last embed to embeds of message
+        reply with {_m}
+
+    # /info admin
+    if event-string = "info admin":
+        if discord id of event-member != "386491431583350784" or "410781931727486976":
+            make embed:
+                set title of the embed to "Info Admin - No permission."
+                set description of the embed to "You are not authorized to perform this command."
+                set embed color of the embed to embedColor("red")
+            reply with hidden last embed
+            stop
+
+        if {-info.Admin::%discord id of event-member%::*} is set:
+            make embed:
+                set title of the embed to "Info Admin - Closing last panel"
+                set description of the embed to "You already have an info admin panel open.%nl%I will close the last one in 5 seconds."
+                set embed color of the embed to embedColor("yellow")
+            reply with hidden last embed
+            
+            wait 5 seconds
+            
+            make embed:
+                set title of the embed to "Info Admin - Panel Disabled"
+                set description of the embed to "This panel has been disabled.%nl%Request a new one by doing </info admin:1100459613570211950>."
+                set embed color of the embed to embedColor("orange")
+            edit {-info.Admin::%discord id of event-member%::embed} with last embed
+            delete {-info.Admin::%discord id of event-member%::*}
+            stop
+        
+        create a new message and store it in {_m}:
+            make embed:
+                set title of the embed to "Info Admin - Select Action"
+                set description of the embed to "Welcome to the Info Admin panel.%nl%Select what you would like to do."
+                set embed color of the embed to embedColor("blue")
+            add last embed to embeds of message
+
+            add new option with value "infoadmin-create" named "Create" with description "Create a new information topic." with emote "1100468289072803880" to {_opts::*}
+            add new option with value "infoadmin-edit" named "Edit" with description "Edit an existing information topic." with emote "1100468977408409722" to {_opts::*}
+            make dropdown with id "infoadmin-start-%discord id of event-member%" with min 1 and max 1 with options {_opts::*} and store it in {_dd}
+            add {_dd} to rows of message
+        reply with {_m} and store it in {-info.Admin::%discord id of event-member%::embed}
+        stop
+
+on dropdown click:
+    event-string contains "infoadmin"
+
+    set {_s::*} to split event-string at "-"
+    if {_s::3} != discord id of event-member:
+        make embed:
+            set title of the embed to "Info Admin - Not your dropdown!"
+            set description of the embed to "The dropdown you are trying to access is not yours."
+            set embed color of the embed to embedColor("red")
+        reply with hidden last embed
+        stop
+    
+    if {_s::2} = "start":
+        if "%selected values%" = "infoadmin-create":
+            set {_m} to new modal with id "infoadmin-createmodal" named "Info Admin - New Topic"
+            
+            make short modal input with id "infoadmin-createmodal-title" named "Topic Title" with min 1 and max 256 with placeholder "The title for the topic. Should be short." with required true and store it in {_inp::1}
+
+            make long modal input with id "infoadmin-createmodal-body" named "Topic Body" with min 1 and max 4000 with placeholder "The content of the topic. Provide as much information as possible." with required true and store it in {_inp::2}
+
+            add {_inp::*} to rows of {_m}
+
+            show {_m} to the user
+        
+        else if "%selected values%" = "infoadmin-edit":
+            
+
+on modal receive:
+    {-info.Admin::%discord id of event-member%::*} is set
+    defer the interaction
+    if event-string = "infoadmin-createmodal":
+        set {_title} to value of text input with id "infoadmin-createmodal-title"
+        set {_body} to value of text input with id "infoadmin-createmodal-body"
+
+        add "%{_title}%;%{_body}%;%random integer between 100000 and 999999999%" to {infotopics::*}
+        
+        make embed:
+            set title of the embed to "Info Admin - Created topic successfully."
+            set description of the embed to "The topic **%{_title}%** has been created successfully.%nl%To preview it, do </info lookup:1100733514174976003> and select the topic you've created."
+            set embed color of the embed to embedColor("green")
+        edit {-info.Admin::%discord id of event-member%::embed} with last embed
+
+        delete {-info.Admin::%discord id of event-member%::*}
+
+        info_registerCommands(true)

@@ -17,7 +17,7 @@ on load:
 on slash command:
     event-string contains "admin"
 
-    if discord id of event-member != "702044939520835587" or "410781931727486976":
+    if discord id of event-member != "702044939520835587" or "410781931727486976" or "386491431583350784":
         make embed:
             set title of the embed to "No Permission!"
             set description of the embed to "You may not perform this command."

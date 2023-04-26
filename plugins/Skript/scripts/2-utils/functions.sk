@@ -1,0 +1,73 @@
+#! Functions File
+#! Made by Cerial
+
+# Remove everything before index
+# As the name suggests.
+function removeBeforeIndex(s: string, i: integer) :: string:
+    set {_ss::*} to split {_s} at ""
+    set {_s} to 0
+    loop {_ss::*}:
+        add 1 to {_s}
+        {_s} >= {_i}
+
+        add "%loop-value%" to {_rt::*}
+    
+    return "%join {_rt::*} with ""%"
+
+# Remove everything AFTER index
+# As the name suggests
+function removeAfterIndex(s: string, i: integer) :: string:
+    set {_ss::*} to split {_s} at ""
+    set {_s} to 0
+    loop {_ss::*}:
+        add 1 to {_s}
+        {_s} <= {_i}
+
+        add "%loop-value%" to {_rt::*}
+    
+    return "%join {_rt::*} with ""%"
+
+# Embed Colors
+# Gets basic embed colors used for embeds.
+function embedColor(c: string) :: color:
+    return rgb(255,0,0) if {_c} = "red"
+    return rgb(0,255,0) if {_c} = "green"
+    return rgb(30,100,199) if {_c} = "blue"
+    return rgb(235,216,1) if {_c} = "yellow"
+    return rgb(235,153,1) if {_c} = "orange"
+    return rgb(12,235,149) if {_c} = "lime"
+
+# Minified dropdown create scope
+effect (create|make) (dropdown|select[-| ]menu) [builder] with id %-string% with min[imum] [selections] %-integer% and max[imum] [selections] %-integer% [with placeholder %-string%] with options %-objects% and store ([the] dropdown|it) in %-object%:
+    trigger:
+        set {_dp} to new dropdown with id expr-1
+        set min range of {_dp} to expr-2
+        set max range of {_dp} to expr-3
+        set placeholder of {_dp} to expr-4 if expr-4 is set
+        add expr-5 to options of {_dp}
+        set raw expr-6 to {_dp}
+
+# Minified modal component creation
+# Short
+effect (create|make) short modal input with id %-string% (with name|named) %-string% with min[imum] [length] %-integer% and max[imum] [length] %-integer% [with placeholder %-string%] [with value %-string%] with required [state] %boolean% and store (the [modal] input|it) in %-object%:
+    trigger:
+        set {_i} to new short text input with id expr-1 named expr-2
+        set placeholder of {_i} to expr-5 if expr-5 is set
+        set value of {_i} to expr-6 if expr-6 is set
+        set min range of {_i} to expr-3
+        set max range of {_i} to expr-4
+        set required state of {_i} to expr-7
+
+        set raw expr-8 to {_i}
+
+# Long
+effect (create|make) (long|paragraph) modal input with id %-string% (with name|named) %-string% with min[imum] [length] %-integer% and max[imum] [length] %-integer% [with placeholder %-string%] [with value %-string%] with required [state] %boolean% and store (the [modal] input|it) in %-object%:
+    trigger:
+        set {_i} to new text input with id expr-1 named expr-2
+        set placeholder of {_i} to expr-5 if expr-5 is set
+        set value of {_i} to expr-6 if expr-6 is set
+        set min range of {_i} to expr-3
+        set max range of {_i} to expr-4
+        set required state of {_i} to expr-7
+
+        set raw expr-8 to {_i}

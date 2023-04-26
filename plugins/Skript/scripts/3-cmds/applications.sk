@@ -1,0 +1,356 @@
+#! Applications
+#! Made by Cerial
+
+# Register function cuz we need to access it
+function applications_registerCommands(rl: boolean):
+    set {_c} to new slash command named "apply" with description "Apply for staff on the Unhack network."
+
+    # /apply admin
+    set {_apply::admin} to new sub command named "admin" with description "Manage the applications."
+
+    # /apply new <name (autocompleteable)>
+    set {_apply::new} to new sub command named "new" with description "Make a new application."
+    set {_applyopt::new::appname} to new required string option named "appname" with description "The name of your application."
+    # Loop through all applications
+    loop {applist::*}:
+        add new choice named "%loop-value%" with value "%loop-value%" to choices of {_applyopt::new::appname}
+
+    add {_applyopt::new::appname} to options of {_apply::new}
+
+    add {_apply::*} to sub commands of {_c}
+
+    addSlash({_c}, "apply")
+    if {_rl} = true:
+        updateSlash()
+
+on load:
+    applications_registerCommands(true)
+
+# /apply new
+on slash command:
+    event-string = "apply new"
+    
+    set {_app} to argument "appname" as string
+    loop {applist::*}:
+        loop-value = {_app}
+
+        set {_e} to true
+        stop loop
+    
+    if {_e} is not set:
+        make embed:
+            set title of the embed to "That application does not exist!"
+            set description of the embed to "The application that you have specified, `%{_app}%`, does not exist.%nl%Use the applications available in the tab completion."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+
+    if {-apps.New::%discord id of event-member%::*} is set:
+        make embed:
+            set title of the embed to "Applications - Already Applying."
+            set description of the embed to "You are already applying for application `%{-apps.New::%discord id of event-member%::appName}%`.%nl%To cancel the application, simply type `stop application` in my DM's.%nl%If this doesn't work, open a ticket."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+    
+    create a new message and store it in {_m}:
+        make embed:
+            set title of the embed to "Applications - Apply for application '%{_app}%'"
+            set description of the embed to "Before applying, make sure to read that specific application's requirement and information.%nl%By clicking **Agree**, you agree that you have read all of the necessary information."
+            set embed color of the embed to yellow
+        add last embed to embeds of message
+    
+        create a new component row and store it in {_r}:
+            add new success button with id "apply-%discord id of event-member%-agree" named "Agree" with reaction "white_check_mark" to components of row
+            add new danger button with id "apply-%discord id of event-member%-deny" named "Deny" with reaction "x" to components of row
+        
+        add {_r} to rows of message
+    
+    reply with {_m} and store it in {-apps.New::%discord id of event-member%::embed}
+    set {-apps.New::%discord id of event-member%::appName} to {_app}
+    stop
+
+import:
+    java.lang.System
+
+on button click:
+    set {_s::*} to split event-string at "-"
+    {_s::1} = "apply"
+
+    if discord id of event-member != {_s::2}:
+        make embed:
+            set title of the embed to "It is not your embed."
+            set description of the embed to "This is not your embed."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+    
+    if {_s::3} = "deny":
+        make embed:
+            set title of the embed to "Applications - Cancelled Application."
+            set description of the embed to "Since you denied the confirmation, the application process has been cancelled.%nl%You are welcome to make another prompt at any time with the same command."
+            set embed color of the embed to lime
+        edit {-apps.New::%discord id of event-member%::embed} with last embed
+        delete {-apps.New::%discord id of event-member%::*}
+        stop
+    
+    else if {_s::3} = "agree":
+        open private channel of event-user and store it in {_dms}
+        if {_dms} is not set:
+            make embed:
+                set title of the embed to "Applications - DM's closed!"
+                set description of the embed to "Currently, your DM's are closed.%nl%Enable them via following the GIF below:"
+                set image of the embed to "https://i.imgur.com/JA8dxiA.gif"
+                set embed color of the embed to red
+            edit {-apps.New::%discord id of event-member%::embed} with last embed
+            delete {-apps.New::%discord id of event-member%::*}
+            stop
+
+
+        make embed:
+            set title of the embed to "Applications - Started Application."
+            set description of the embed to "Application `%{-apps.New::%discord id of event-member%::appName}%` has been started in DM's.%nl%Respond to the questions honestly, and DO NOT use any AI / have someone to help you."
+            set embed color of the embed to lime
+        edit {-apps.New::%discord id of event-member%::embed} with last embed
+        set {-apps.New::%discord id of event-member%::qnum} to 1
+        set {-apps.New::%discord id of event-member%::started} to System.currentTimeMillis()
+        sendQuestion(event-user)
+        stop
+
+function sendQuestion(u: user):
+    # {apps::%{_name}%::questions::*}
+    set {_n} to {-apps.New::%discord id of {_u}%::appName}
+    set {_qnum} to {-apps.New::%discord id of {_u}%::qnum}
+    set {_qs::*} to split {apps::%{_n}%::questions::%{_qnum}%} at ";"
+    set {_d} to ""
+    if {_qs::2} is set:
+        set {_d} to "%nl%%{_qs::2}%"
+
+    create a new message and store it in {_m}:
+        make embed:
+            set title of the embed to "Applications - Question ##%{-apps.New::%discord id of {_u}%::qnum}%"
+            set description of the embed to "**%{_qs::1}%**%{_d}%"
+            set footer of the embed to "If you would like to stop the application process, type ""stop application"" in the chat at any time."
+            set embed color of the embed to light blue
+        add last embed to embeds of message
+        make new component row and store it in {_r}:
+            add new disabled secondary button with id "appname" named "Question from application: %{-apps.New::%discord id of {_u}%::appName}%" to components of row
+        add {_r} to rows of message
+
+    open private channel of {_u} and store it in {_dms}
+    post {_m} to {_dms}
+    stop
+
+on message received:
+    discord id of event-channel is not set
+    {-apps.New::%discord id of event-user%::*} is set
+
+    set {_name} to {-apps.New::%discord id of event-user%::appName}
+    set {_fqnum} to {-apps.New::%discord id of event-user%::qnum}+1
+
+    # Check if the user has finished their application
+    if {apps::%{_name}%::questions::%{_fqnum}%} is not set:
+        add "%event-message%" to {-apps.New::%discord id of event-user%::answers::*}
+        make embed:
+            set title of the embed to "Applications - Finished Application"
+            set description of the embed to "You have finished the application `%{-apps.New::%discord id of event-user%::appName}%` successfully.%nl%Your response was sent to the applications team, and it will be reviewed shortly.%nl%I will let you know in DM's if your application got accepted/denied, so make sure to not turn DM's off!"
+            set embed color of the embed to lime
+        reply with last embed
+        
+        wait 1 second
+
+        # Add application data to global variable
+        add 1 to {apps.User::%discord id of event-user%::count}
+        set {_count} to {apps.User::%discord id of event-user%::count}
+        set {apps.User::%discord id of event-user%::%{_count}%::answers::*} to {-apps.New::%discord id of event-user%::answers::*}
+        set {apps.User::%discord id of event-user%::%{_count}%::status} to "Not reviewed"
+
+        # Calculate application time
+        set {_fin} to ((System.currentTimeMillis()-{-apps.New::%discord id of event-user%::started})/1000)*(1/60)
+        set {_fs::*} to split "%{_fin}%" at "."
+        set {_sec} to round(("0.%{_fs::2}%" parsed as number)*(60/1))
+        set {_res} to "%{_fs::1}% minutes, %{_sec}% seconds (or %{_fin}% minutes)"
+
+        create a new message and store it in {_sm}:
+            make embed:
+                set title of the embed to "Applications - Application of %event-user%"
+                set description of the embed to "> :information_source: To view *full* answers (which couldn't fit in Discord's charater limits), click on the **View Full Question** button, select a question, and a full text file will be generated for that question.%nl%%nl%`-` **Took to apply:** %{_res}%"
+                loop {-apps.New::%discord id of event-user%::answers::*}:
+                    set {_lsq::*} to split "%{apps::%{-apps.New::%discord id of event-user%::appName}%::questions::%loop-index%}%" at ";"
+                    set {_err} to "... *too long to display beyond this point*" if length of "%loop-value%" > 974
+                    add field named "%{_lsq::1}%" with value "%removeAfterIndex(loop-value, 974)%%{_err}%" to embed
+                set embed color of the embed to yellow
+            add last embed to embeds of message
+            
+            create new component row and store it in {_sr}:
+                add new secondary button with id "applyrev-%discord id of event-user%-%{_count}%-fullans" named "View full answer for question" with reaction "fire" to components of row
+                add new success button with id "applyrev-%discord id of event-user%-%{_count}%-accept" named "Accept" with reaction "white_check_mark" to components of row
+                add new danger button with id "applyrev-%discord id of event-user%-%{_count}%-deny" named "Deny" with reaction "x" to components of row
+            add {_sr} to rows of message
+        
+        post {_sm} to channel with id "1076595262543368315"
+        delete {-apps.New::%discord id of event-user%::*}
+        stop
+
+    # Check if the user has requested to stop the application
+    if "%event-message%" = "stop application":
+        make embed:
+            set title of the embed to "Applications - Stopped application"
+            set description of the embed to "The application process has stopped.%nl%You can apply again at any time."
+            set embed color of the embed to lime
+        reply with last embed
+        delete {-apps.New::%discord id of event-user%::*}
+        stop
+
+    # Add the answer to the temp answers data
+    add "%event-message%" to {-apps.New::%discord id of event-user%::answers::*}
+    add 1 to {-apps.New::%discord id of event-user%::qnum}
+    sendQuestion(event-user)
+    stop
+
+# /apply admin
+on slash command:
+    event-string = "apply admin"
+
+    post "%discord id of event-member%" to event-channel
+    if "%discord id of event-member%" is not "702044939520835587", "442743351658414095", "410781931727486976" or "421672828073410572" or "386491431583350784":
+        make embed:
+            set title of the embed to "No permission!"
+            set description of the embed to "You need to be either an apply manager, co-owner or owner to use this command."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+    
+    else:
+        if {-apps::%discord id of event-member%::embed} is set:
+            make embed:
+                set title of the embed to "Applications - Admin Panel - Panel already open!"
+                set description of the embed to "The system has already detected an admin panel open in your name.%nl%In 3 seconds, I will close it. After that, you will be able to run this command with no issues."
+                set embed color of the embed to red
+            reply with last embed
+            wait 3 seconds
+            make embed:
+                set title of the embed to "Panel closed."
+                set description of the embed to "You ran the admin command again, which closed this panel.%nl%Run the command again to open a new panel."
+                set embed color of the embed to orange
+            edit {-apps::%discord id of event-member%::embed} with last embed
+            wait 1 tick
+            delete {-apps::%discord id of event-member%::embed}
+            stop
+        
+        # 1st embed
+        create a new message and store it in {_m}:
+            make embed:
+                set title of the embed to "Applications - Admin Panel"
+                set description of the embed to "Welcome to the Admin panel. Select what you need below from the dropdown."
+                set embed color of the embed to orange
+            add last embed to embeds of message
+
+            set {_d} to new dropdown with id "applyadmin-sel1-%discord id of event-member%"
+            set min range of {_d} to 1
+            set max range of {_d} to 1
+            set placeholder of {_d} to "Select admin option."
+            
+            add new option with value "applyadmin-newapp" named "New Application" with description "Create a new application." with reaction "heavy_plus_sign" to options of {_d}
+            add new option with value "applyadmin-manageapps" named "Manage Applications" with description "Close or edit an application." with reaction "clipboard" to options of {_d}
+            add {_d} to rows of message
+        reply with {_m} and store it in {-apps::%discord id of event-member%::embed}
+        stop
+
+# sel1
+on dropdown click:
+    set {_ss::*} to split event-string at "-"
+    {_ss::1} = "applyadmin"
+
+    if {_ss::3} != discord id of event-member:
+        make embed:
+            set title of the embed to "It is not your embed."
+            set description of the embed to "This is not your embed."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+    {_ss::2} = "sel1"
+    defer the interaction
+
+    if "%selected values%" = "applyadmin-newapp":
+        # Make new embed with buttons
+        create a new message and store it in {_m}:
+            make embed:
+                set title of the embed to "Applications - Admin Panel - New Application"
+                set description of the embed to "Before making a new application, I want you to understand what you are going to do.%nl%When you click **Understood**, an input box will show up. Each question will be seperated with a new line, and if needed, provide a description to the question by putting `;` at the end of it, and then input the description.%nl%For example: ```%nl%What is your favorite food?;For example: Pizza, Pasta, Lasagna, ect.```"
+                set embed color of the embed to yellow
+            add last embed to embeds of message
+
+            make new component row and store it in {_r}:
+                add new success button with id "applyadmin-sel2-%discord id of event-member%-understood" named "Understood" with reaction "white_check_mark" to components of row
+                add new danger button with id "applyadmin-sel2-%discord id of event-member%-didntunderstand" named "Didn't understand" with reaction "x" to components of row
+            add {_r} to rows of message
+        edit {-apps::%discord id of event-member%::embed} with {_m}
+
+# sel2
+on button click:
+    set {_ss::*} to split event-string at "-"
+    {_ss::2} = "sel2"
+
+    if {_ss::3} != discord id of event-member:
+        make embed:
+            set title of the embed to "It is not your embed."
+            set description of the embed to "This is not your embed."
+            set embed color of the embed to red
+        reply with hidden last embed
+        stop
+    
+    if {_ss::4} = "didntunderstand":
+        make embed:
+            set title of the embed to "Didn't understand."
+            set description of the embed to "You didn't understand? That's fine. Run the command again and see if you understand."
+            set embed color of the embed to lime
+        edit {-apps::%discord id of event-member%::embed} with last embed 
+        delete {-apps::%discord id of event-member%::embed}
+        stop
+    
+    if {_ss::4} = "understood":
+        set {_mo} to new modal with id "applyadmin-modal" named "Applications - Admin Panel - New App."
+        
+        set {_co::1} to new short text input with id "applyadmin-appname" named "Application Name"
+        set placeholder of {_co::1} to "A simple, and short name."
+        set min range of {_co::1} to 1
+        set max range of {_co::1} to 50
+        set required state of {_co::1} to true
+        
+        set {_co::2} to new text input with id "applyadmin-questions" named "Questions"
+        set placeholder of {_co::2} to "Input all the questions here. Every question is seperated with new line."
+        set min range of {_co::2} to 1
+        set max range of {_co::2} to 4000
+        set required state of {_co::2} to true
+        add {_co::*} to rows of {_mo}
+
+        show {_mo} to the user
+        stop
+
+# sel3
+on modal receive:
+    event-string = "applyadmin-modal"
+    set {_q} to value of text input with id "applyadmin-questions"
+    set {_name} to value of text input with id "applyadmin-appname"
+    defer the interaction
+    if {apps::%{_name}%::*} is set:
+        make embed:
+            set title of the embed to "Applications - Admin Panel - New Application - Application already exists!"
+            set description of the embed to "An application named **%{_name}%** already exists.%nl%Re-run the command, and make a new application."
+            set embed color of the embed to red
+        edit {-apps::%discord id of event-member%::embed} with last embed
+        delete {-apps::%discord id of event-member%::embed}
+        stop
+
+    set {apps::%{_name}%::questions::*} to split {_q} at nl
+    set {apps::%{_name}%::open} to true
+    add {_name} to {applist::*}
+    make embed:
+        set title of the embed to "Applications - Admin Panel - New Application - Application successfully made."
+        set description of the embed to "The following information has been entered:%nl%`-` **Name:** %{_name}%%nl%`-` **Questions:** ```%nl%%removeAfterIndex(join {apps::%{_name}%::questions::*} with nl, 3600)%```"
+        set embed color of the embed to lime
+    edit {-apps::%discord id of event-member%::embed} with last embed
+    delete {-apps::%discord id of event-member%::embed}
+    applications_registerCommands(true)
+    stop
